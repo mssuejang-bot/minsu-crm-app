@@ -273,6 +273,7 @@
     display:flex;gap:9px;align-items:flex-start;
   }
   .banner.red{background:var(--red-dim);border-color:rgba(248,81,73,.35);color:var(--red)}
+  .banner.info{background:var(--cyan-dim);border-color:rgba(88,166,255,.30);color:var(--cyan)}
   .banner b{display:block;margin-bottom:2px}
   .banner .x{margin-left:auto;color:inherit;opacity:.7;padding:0 2px}
 
@@ -576,7 +577,8 @@ function schedulePush(delay){
   pushTimer=setTimeout(pushNow, delay||450);
 }
 async function pushNow(){
-  if(!S.token || !S.doc) return;
+  if(!S.token){ setSync('idle'); return; }
+  if(!S.doc) return;
   if(pushing) { schedulePush(800); return; }
   if(!queue.length){ setSync('ok'); return; }
   pushing=true; setSync('sync');
@@ -701,10 +703,10 @@ function renderTop(){
   var done=companies().filter(isDoneToday).length;
   $('todayHead').innerHTML='지금 확인할 기업'+'<span>'+list.length+'곳</span>';
   var sub;
-  if(!S.token){
+  if(!S.token && !S.doc){
     sub='<b>연결 필요</b> · 토큰을 넣으면 노션 CRM 195개사가 열립니다';
   } else if(S.doc){
-    sub='전체 <b>'+companies().length+'개사</b> · 오늘 완료 <b>'+done+'</b> · '+ (S.lastSync? timeAgo(S.lastSync)+' 동기화' : '동기화 전');
+    sub='전체 <b>'+companies().length+'개사</b> · 오늘 완료 <b>'+done+'</b> · '+ (!S.token?'로컬 모드':(S.lastSync? timeAgo(S.lastSync)+' 동기화' : '동기화 전'));
   } else {
     sub='데이터 불러오는 중…';
   }
@@ -873,10 +875,13 @@ function renderSettings(){
 
 function renderBanners(){
   var b=$('banners'), html='';
+  var hasData=!!(S.doc && (S.doc.companies||[]).length);
   if(S.state==='err' && S.errMsg){
     html+='<div class="banner red"><div><b>저장 실패</b>'+esc(S.errMsg)+'</div><button class="x" onclick="dismissErr()">✕</button></div>';
-  } else if(!S.token){
+  } else if(!S.token && !hasData){
     html+='<div class="banner"><div><b>토큰 미연결</b>GitHub 토큰을 넣으면 195개사 데이터가 열립니다. 지금은 UI만 보이는 상태입니다.</div><button class="x" onclick="connectFlow()">연결</button></div>';
+  } else if(!S.token && hasData){
+    html+='<div class="banner info"><div><b>로컬 모드</b>토큰이 없어 변경이 이 기기에만 저장됩니다.</div><button class="x" onclick="connectFlow()">연결</button></div>';
   }
   b.innerHTML=html;
 }
@@ -892,7 +897,7 @@ function actDone(id){
   logAct(c,'완료 처리');
   markDirty(); saveLocal(); renderAll();
   commit('done', id);
-  toast(shortName(c.name)+' 완료', function(){ c.doneAt=prev.doneAt; c.dueDate=prev.dueDate; c.activity=c.activity.filter(function(a){return a.text!=='완료 처리';}); markDirty(); saveLocal(); renderAll(); commit('undo','실행취소'); }, 'done', id);
+  toast(shortName(c.name)+' 완료'+(S.token?'':' · 이 기기에만'), function(){ c.doneAt=prev.doneAt; c.dueDate=prev.dueDate; c.activity=c.activity.filter(function(a){return a.text!=='완료 처리';}); markDirty(); saveLocal(); renderAll(); commit('undo','실행취소'); }, 'done', id);
 }
 function actSnooze(id){
   var c=byId(id); if(!c) return;
@@ -901,7 +906,7 @@ function actSnooze(id){
   logAct(c,'내일로 이동');
   markDirty(); saveLocal(); renderAll();
   commit('snooze', id);
-  toast(shortName(c.name)+' → 내일', function(){ c.dueDate=prev.dueDate; c.doneAt=prev.doneAt; c.activity=c.activity.filter(function(a){return a.text!=='내일로 이동';}); markDirty(); saveLocal(); renderAll(); commit('undo','실행취소'); }, 'snooze', id);
+  toast(shortName(c.name)+' → 내일'+(S.token?'':' · 이 기기에만'), function(){ c.dueDate=prev.dueDate; c.doneAt=prev.doneAt; c.activity=c.activity.filter(function(a){return a.text!=='내일로 이동';}); markDirty(); saveLocal(); renderAll(); commit('undo','실행취소'); }, 'snooze', id);
 }
 function logAct(c, text, type){
   c.activity=c.activity||[];
