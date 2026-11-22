@@ -1210,7 +1210,7 @@ function importJson(input){
       var d=JSON.parse(rd.result);
       if(!d.companies || !d.companies.length) throw new Error('companies 배열이 없습니다');
       if(S.doc && !confirm('현재 데이터를 이 파일로 바꿉니다. 계속할까요?')) return;
-      S.doc=d; S.sha=''; markDirty(); saveLocal(); renderAll();
+      S.doc=d; markDirty(); saveLocal(); renderAll();
       toast('불러왔습니다 · '+d.companies.length+'개사 (저장은 다음 수정 때)');
     }catch(e){ toast('읽기 실패: '+e.message); }
   };
